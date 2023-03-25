@@ -1,0 +1,19 @@
+project_id: ${env.gcp_project}
+location: ${env.location}
+image: ${env.image}
+pipeline_bucket: ${env.gcp_project}-vertex
+pipeline_name: weekly_pipeline
+pipeline_root: gs://${kfp.pipeline_bucket}/kfp
+yaml_path: invoke.yaml
+bq_components:
+  cpu_limit: 100m
+  memory_limit: 100M
+  num_retries: 3
+  backoff_duration: 1m
+  backoff_factor: 2
+train_components:
+  cpu_limit: 96000m
+  memory_limit: 624G
+predict_components:
+  cpu_limit: 600m
+  memory_limit: 5G

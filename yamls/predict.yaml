@@ -1,0 +1,23 @@
+sql:
+  sum_days: ${preprocess.sql.sum_days}
+  # ABC判定に何日用いるか
+  abc_stats_days: 90
+
+predictor:
+  debug: False
+  gcp_project: ${env.gcp_project}
+  dataset: prediction_dataset
+  train_bucket: ${env.train_bucket}
+  bucket: ${env.predict_bucket}
+  # Composerから動かした場合は、EXECUTION_DATE(pipeline開始日時)を環境変数で渡す
+  prediction_path: ${execution_date}/result
+  latest_model_path: latest/model
+  lgbm:
+    numerical_cols: ${feature.numerical_cols}
+    cat_cols: ${feature.cat_cols}
+    pred_col: ${feature.pred_col}
+    upload_cols:
+      - yj_code
+      - store_code
+      - dispensing_date
+      - ${feature.pred_col}

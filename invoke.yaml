@@ -1,0 +1,27 @@
+defaults:
+  - yamls@imp: imp
+  - yamls@preprocess: preprocess
+  - yamls@train: train
+  - yamls@predict: predict
+  - yamls@feature: feature
+  - yamls@kfp: kfp
+
+version: 0.1.0
+# Vertex Pipelinesから動かした場合は、EXECUTION_DATE(pipeline開始日時)を環境変数で渡す
+execution_date: "2022-12-08"
+
+env:
+  gcp_project: sugi-poc2-development
+  location: us-central1
+  train_bucket: ${env.gcp_project}-train
+  predict_bucket: ${env.gcp_project}-prediction
+  image: gcr.io/${env.gcp_project}/sugi-runner:${version}
+
+vertex:
+  instance_type: n1-highmem-96
+  timeout: 21600
+
+start_ts: 2022-12-01T00:00:00+09:00
+end_ts: 2022-12-08T00:00:00+09:00
+# モデルの更新日数
+update_days: 7

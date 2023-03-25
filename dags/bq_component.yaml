@@ -1,0 +1,16 @@
+name: {{ invoke_command }}
+inputs:
+  - name: start_ts
+    type: String
+  - name: end_ts
+    type: String
+
+implementation:
+  container:
+    image: {{ image }}
+    command: {{ command }}
+    args:
+      - --start-ts
+      - inputValue: start_ts
+      - --end-ts
+      - inputValue: end_ts

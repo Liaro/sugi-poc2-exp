@@ -1,0 +1,16 @@
+name: {{ invoke_command }}
+inputs:
+  - name: exp_name
+    type: String
+  - name: execution_date
+    type: String
+
+implementation:
+  container:
+    image: {{ image }}
+    command: {{ command }}
+    args:
+      - --exp-name
+      - inputValue: exp_name
+      - --execution-date
+      - inputValue: execution_date
