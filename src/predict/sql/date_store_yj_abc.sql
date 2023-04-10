@@ -1,8 +1,7 @@
-DECLARE START_DATE DATE DEFAULT DATE("{{start_ts}}", "Asia/Tokyo");
--- 使用できる最新の日付
-DECLARE END_DATE DATE DEFAULT DATE("{{end_ts}}", "Asia/Tokyo");
+DECLARE END_DATE DATE DEFAULT DATE_SUB(DATE("{{end_ts}}", "Asia/Tokyo"), INTERVAL {{sum_days}} DAY);
+DECLARE START_DATE DATE DEFAULT DATE_SUB(END_DATE, INTERVAL {{test_days}} DAY);
 
-CREATE TABLE IF NOT EXISTS `{{project_id}}.prediction_internal.{{script_name}}`(
+CREATE TABLE IF NOT EXISTS `{{project_id}}.{{dataset_id}}.{{script_name}}`(
   yj_code	STRING NOT NULL OPTIONS(description="YJコード"),
   store_code STRING NOT NULL OPTIONS(description="店舗コード"),
   dispensing_date DATE NOT NULL OPTIONS(description="予測に使われる日付"),
@@ -20,11 +19,11 @@ CLUSTER BY store_code
 OPTIONS(description="分析、アンサンブルに用いるABCフラグ")
 ;
 
-DELETE prediction_internal.{{script_name}}
+DELETE  `{{project_id}}.{{dataset_id}}.{{script_name}}`
 WHERE START_DATE <= dispensing_date AND dispensing_date < END_DATE
 ;
 
-INSERT prediction_internal.{{script_name}}
+INSERT  `{{project_id}}.{{dataset_id}}.{{script_name}}`
 
 
 WITH PRES_COUNT AS (

@@ -1,5 +1,13 @@
 label_col: diff_total_dose_monthly
 pred_col: predicted_total_dose
+upload_cols:
+  [
+    "yj_code",
+    "store_code",
+    "dispensing_date",
+    "${feature.label_col}",
+    "${feature.pred_col}",
+  ]
 cat_cols:
   [
     "direct_sales_input_kubun_id",

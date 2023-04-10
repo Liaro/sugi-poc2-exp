@@ -14,7 +14,7 @@ SELECT
   yj_code,
   store_code,
   -- 訓練期間の途中では、未来の情報を使うことになるが、テスト期間でも同じカテゴリを使うため問題ない
-  STRING_AGG(doctor_code, ' ') AS doctors
+  STRING_AGG(doctor_code, ' ' ORDER BY doctor_code) AS doctors
 FROM `{{project_id}}.import.t_prescription` 
 WHERE
   -- 訓練期間以降は分布が変わるため

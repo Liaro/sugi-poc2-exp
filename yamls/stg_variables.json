@@ -1,0 +1,7 @@
+{
+    "cluster_location": "asia-northeast1",
+    "daily_yaml_path": "invoke_staging_predict.yaml",
+    "gcp_project": "sugi-poc2-staging",
+    "version": "0.1.0",
+    "weekly_yaml_path": "invoke_staging.yaml"
+}

@@ -2,6 +2,9 @@ sql:
   sum_days: ${preprocess.sql.sum_days}
   # ABC判定に何日用いるか
   abc_stats_days: 90
+  train_days: ${preprocess.sql.train_days}
+  valid_days: ${preprocess.sql.valid_days}
+  test_days: ${preprocess.sql.test_days}
 
 predictor:
   debug: False

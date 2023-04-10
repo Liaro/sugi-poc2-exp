@@ -9,16 +9,15 @@ sql:
 trainer:
   debug: False
   gcp_project: ${env.gcp_project}
-  dataset: train_dataset
+  dataset_id: ${env.dataset_id}
   bucket: ${env.train_bucket}
-  model_path: ${execution_date}/model
-  importance_path: ${execution_date}/feature_importance
-  evaluation_path: ${execution_date}/evaluation_result
   latest_model_path: latest/model
+  upload_cols: ${feature.upload_cols}
   lgbm:
     numerical_cols: ${feature.numerical_cols}
     cat_cols: ${feature.cat_cols}
     label_col: ${feature.label_col}
+    pred_col: ${feature.pred_col}
     early_stopping_rounds: 200
     verbose_eval: 100
     num_iterations: 100000

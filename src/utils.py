@@ -8,7 +8,8 @@ import invoke
 from hydra.errors import MissingConfigException
 from hydra import compose, initialize_config_dir
 from google.cloud.logging import Client, Resource
-from google.cloud.logging.handlers import CloudLoggingHandler, setup_logging
+
+# from google.cloud.logging.handlers import CloudLoggingHandler, setup_logging
 from invoke import Collection, Context
 from jinja2 import Template
 from omegaconf import DictConfig, OmegaConf
@@ -42,8 +43,10 @@ def update_config(c):
         hydra_config = None
     if c.config._runtime_path is not None:
         # -fオプションで異なるyamlを見にいく場合はinvoke.yamlの内容を上書きする。
+        paths = c.config._runtime_path.split("/")
+        root_dir = root_dir + "/" + "/".join(paths[:-1])
         with initialize_config_dir(config_dir=root_dir):
-            override_config = compose(c.config._runtime_path)
+            override_config = compose(paths[-1])
         if hydra_config is not None:
             hydra_config = OmegaConf.merge(hydra_config, override_config)
         else:
@@ -144,9 +147,7 @@ def render_template(sql_path: str, params: Optional[Dict[str, Any]] = None) -> s
     return query
 
 
-def add_create_delete_task(
-    ns: Collection, sql_paths: List[str], dataset_id: str
-) -> None:
+def add_create_delete_task(ns: Collection, sql_paths: List[str]) -> None:
     """SQLのファイル名と同じ名前でSQL実行のinvokeタスクを作成
 
     Args:
@@ -159,11 +160,9 @@ def add_create_delete_task(
         script_name = os.path.basename(sql_path).split(".")[0]
         sql_dir_name = sql_path.split("/")[1]
 
-        def get_task(
-            script_name: str, sql_path: str, sql_dir_name: str, dataset_id: str
-        ):
+        def get_task(script_name: str, sql_path: str, sql_dir_name: str):
             @task
-            def _execute_task(c, start_ts=None, end_ts=None, delete=False):
+            def _execute_task(c, end_ts=None, delete=False):
                 """
                 Args:
                     c (invoke.Context): invokeのContextクラス
@@ -173,44 +172,41 @@ def add_create_delete_task(
                 """
                 logger = setup_logger(c)
                 bq = BQClient(c.env.gcp_project)
-                if start_ts is None:
-                    start_ts = c.start_ts
                 if end_ts is None:
                     end_ts = c.end_ts
                 params = {
                     "project_id": c.env.gcp_project,
-                    "dataset_id": dataset_id,
+                    "dataset_id": c.env.dataset_id,
                     "script_name": script_name,
-                    "start_ts": start_ts,
                     "end_ts": end_ts,
                 }
                 params.update(dict(getattr(c, sql_dir_name).sql))
-                query = render_template(sql_path, params=params,)
+                query = render_template(sql_path, params=params)
                 logger.info(f"[query]\n {query}")
                 logger.info(f"Loaded query from {sql_path}")
                 if delete:
-                    bq.delete_table(dataset_id, script_name)
+                    bq.delete_table(c.env.dataset_id, script_name)
                 else:
                     bq.execute_query(query)
                     logger.info(f"[done] execution {script_name} query completed.")
 
             return _execute_task
 
-        execute_task = get_task(script_name, sql_path, sql_dir_name, dataset_id)
+        execute_task = get_task(script_name, sql_path, sql_dir_name)
         ns.add_task(execute_task, script_name)
 
 
 def setup_logger(c: Context):
     """ルートロガーに CloudLoggingの設定をする"""
 
-    logging_client = Client()
-    resource = Resource(
-        type="k8s_pod",
-        labels={"project_id": c.env.gcp_project, "location": c.env.location},
-    )
-    handler = CloudLoggingHandler(logging_client, resource=resource)
+    # logging_client = Client()
+    # resource = Resource(
+    #     type="k8s_pod",
+    #     labels={"project_id": c.env.gcp_project, "location": c.env.location},
+    # )
+    # handler = CloudLoggingHandler(logging_client, resource=resource)
     logging.getLogger().setLevel(logging.INFO)
-    setup_logging(handler)
+    # setup_logging(handler)
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()

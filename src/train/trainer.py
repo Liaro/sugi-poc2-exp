@@ -30,7 +30,9 @@ logger.addHandler(handler)
 
 class LGBMTrainer(object):
     def __init__(
-        self, config: DictConfig, exp_name: str,
+        self,
+        config: DictConfig,
+        exp_name: str,
     ):
         self.config = config
         self.exp_name = exp_name
@@ -42,14 +44,14 @@ class LGBMTrainer(object):
 
     def _load_data(self) -> pd.DataFrame:
         query = f"""
-        SELECT * FROM train_dataset.train_dataset_{self.exp_name}
+        SELECT * FROM {self.config.dataset_id}.train_dataset_{self.exp_name}
         """
         if self.config.debug:
             # デバッグ用にdownsamplingする
             query += f"""
                 WHERE yj_code in (
                     SELECT DISTINCT yj_code
-                    FROM train_dataset.train_dataset_{self.exp_name}
+                    FROM {self.config.dataset_id}.train_dataset_{self.exp_name}
                     ORDER BY 1
                     LIMIT 10
                 )
@@ -65,7 +67,7 @@ class LGBMTrainer(object):
                     "allowLargeResults": True,
                     "destinationTable": {
                         "projectId": self.config.gcp_project,
-                        "datasetId": self.config.dataset,
+                        "datasetId": self.config.dataset_id,
                         "tableId": self.dest_table_id,
                     },
                 },
@@ -75,7 +77,7 @@ class LGBMTrainer(object):
         logger.info(f"Data size: {df_bytes / 1024 / 1024} MB")
         logger.info(f"DataFrame Shape: {df.shape}")
         bq = BQClient(self.config.gcp_project)
-        bq.delete_table(self.config.dataset, self.dest_table_id)
+        bq.delete_table(self.config.dataset_id, self.dest_table_id)
 
         return df
 
@@ -100,7 +102,6 @@ class LGBMTrainer(object):
                 train_valid_df.loc[
                     train_valid_df.query(f"{col} not in @cats").index, col
                 ] = -20000
-                test_df.loc[test_df.query(f"{col} not in @cats").index, col] = -20000
                 le.fit(list(cats) + [-20000])
             else:
                 train_df.loc[train_df.query(f"{col} not in @cats").index, col] = "other"
@@ -108,7 +109,6 @@ class LGBMTrainer(object):
                 train_valid_df.loc[
                     train_valid_df.query(f"{col} not in @cats").index, col
                 ] = "other"
-                test_df.loc[test_df.query(f"{col} not in @cats").index, col] = "other"
                 le.fit(list(cats) + ["other"])
             if len(train_df[col].unique()) - len(cats) > 0:
                 warnings.warn(
@@ -186,7 +186,9 @@ class LGBMTrainer(object):
             num_boost_round=num_iterations,
             valid_sets=[lgtrain],
             valid_names=["train"],
-            callbacks=[lgb.log_evaluation(self.config.lgbm.verbose_eval),],
+            callbacks=[
+                lgb.log_evaluation(self.config.lgbm.verbose_eval),
+            ],
         )
         return bst
 
@@ -216,7 +218,7 @@ class LGBMTrainer(object):
                 gcs.upload_blob(
                     self.config.bucket,
                     local_path,
-                    f"{self.config.model_path}/model_{self.exp_name}.pkl",
+                    f"{self.exp_name}/model_{self.exp_name}.pkl",
                 )
 
     def _upload_importance(self, bst: lgb.Booster) -> None:
@@ -230,7 +232,7 @@ class LGBMTrainer(object):
             {"importance": importance}, index=self.feature_cols
         ).sort_values(by="importance", ascending=False)
         importance_df.to_csv(
-            f"gs://{self.config.bucket}/{self.config.importance_path}/feature_importance_{self.exp_name}.csv",
+            f"gs://{self.config.bucket}/{self.exp_name}/feature_importance_{self.exp_name}.csv",
             index=False,
         )
         with tempfile.TemporaryDirectory() as tmp_d:
@@ -244,7 +246,7 @@ class LGBMTrainer(object):
             gcs.upload_blob(
                 self.config.bucket,
                 local_path,
-                f"{self.config.importance_path}/feature_importance_{self.exp_name}.png",
+                f"{self.exp_name}/feature_importance_{self.exp_name}.png",
             )
 
     def _upload_evaluation(self, eval_df: pd.DataFrame) -> None:
@@ -255,7 +257,19 @@ class LGBMTrainer(object):
             eval_df (pd.DataFrame): 評価指標をまとめたDataFrame
         """
         eval_df.to_csv(
-            f"gs://{self.config.bucket}/{self.config.evaluation_path}/evaluation_result_{self.exp_name}.csv",
+            f"gs://{self.config.bucket}/{self.exp_name}/evaluation_result_{self.exp_name}.csv",
+            index=False,
+        )
+
+    def _upload_preds(self, test_df: pd.DataFrame) -> None:
+        """
+        現行モデルと最新モデルの評価指標をGCSにアップロードする
+
+        Args:
+            eval_df (pd.DataFrame): 評価指標をまとめたDataFrame
+        """
+        test_df[self.config.upload_cols].to_csv(
+            f"gs://{self.config.bucket}/{self.exp_name}/pred_result_{self.exp_name}.csv",
             index=False,
         )
 
@@ -280,7 +294,7 @@ class LGBMTrainer(object):
 
     def evaluate(
         self, le_dict: Dict[str, LabelEncoder], bst: lgb.Booster, test_df: pd.DataFrame
-    ) -> Dict[str, float]:
+    ) -> Tuple[Dict[str, float], np.ndarray]:
         for col in self.config.lgbm.cat_cols:
             cats = le_dict[col].classes_
             if pd.api.types.is_numeric_dtype(test_df[col]):
@@ -290,12 +304,16 @@ class LGBMTrainer(object):
             test_df.loc[:, col] = le_dict[col].transform(test_df[col])
         preds = bst.predict(test_df[self.feature_cols])
         labels = test_df[self.config.lgbm.label_col]
+        if "diff" in self.config.lgbm.label_col:
+            preds += test_df["lag_total_dose_by_yj_store"].to_numpy()
+            labels += test_df["lag_total_dose_by_yj_store"].to_numpy()
         metrics = {
+            "model_version": self.exp_name,
             "rmse": np.sqrt(mean_squared_error(labels, preds)),
             "mae": mean_absolute_error(labels, preds),
             "r2": r2_score(labels, preds),
         }
-        return metrics
+        return metrics, preds
 
     def execute(self):
         df = self._load_data()
@@ -308,14 +326,8 @@ class LGBMTrainer(object):
         self._upload_model(le_dict, bst, deploy=False)
         self._upload_importance(bst)
         # 最新モデルと現行モデルの比較
-        current_metrics = self.evaluate(le_dict, bst, test_df.copy())
-        current_metrics["model_version"] = "current_model"
-        # 評価用の訓練済み現行モデル
-        latest_le_dict, latest_bst = self._load_latest_model()
-        prev_metrics = self.evaluate(latest_le_dict, latest_bst, test_df.copy())
-        prev_metrics["model_version"] = "prev_model"
-        eval_df = pd.DataFrame([current_metrics, prev_metrics])
+        metrics, preds = self.evaluate(le_dict, bst, test_df.copy())
+        test_df[self.config.lgbm.pred_col] = preds
+        eval_df = pd.DataFrame(metrics, index=[0])
         self._upload_evaluation(eval_df)
-        if current_metrics["rmse"] < prev_metrics["rmse"]:
-            # latest pathにアップロードして、モデルを更新
-            self._upload_model(le_dict, bst, deploy=True)
+        self._upload_preds(test_df)

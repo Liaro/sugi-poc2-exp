@@ -1,0 +1,26 @@
+# Logで学習
+env:
+  dataset_id: exp001
+preprocess:
+  sql:
+    # 予測時に用いるSQLかどうか
+    is_prediction: False
+    # 何日分処方量を足した値をtargetにするか
+    sum_days: 28
+    train_days: 545
+    valid_days: 14
+    test_days: 56
+    # 過去の統計量をとるのに使用するBQ集計関数
+    ops: ["AVG", "STDDEV", "MIN", "MAX"]
+    # 過去の統計量をとるのに使用するBQ集計関数
+    category_ops: ["AVG", "STDDEV"]
+    # 何日前までで上の統計量を計算するか
+    preceding_days: [365, 180, 90, 60, 30]
+    # 何日前のLag特徴量を作成するか
+    # 実際には月予測をしているので、sum_days + lag_day日前のlagを取っている
+    lag_days: [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]
+    # 前回の処方日からの経過日数をClipする最大値
+    max_last_prescription_days: 200
+    update_days: ${update_days}
+feature:
+  label_col: total_dose_monthly
