@@ -1,17 +1,10 @@
 /*
   前回の処方からの日数に関する特徴
 */
-{% if is_prediction %}
-DECLARE END_DATE DATE DEFAULT DATE_SUB(DATE("{{end_ts}}", "Asia/Tokyo"), INTERVAL {{sum_days - 1}} DAY);
-DECLARE START_DATE DATE DEFAULT DATE_SUB(END_DATE, INTERVAL 1 DAY);
-CREATE OR REPLACE TABLE `{{project_id}}.{{dataset_id}}.predict_{{script_name}}`
-
-{% else %}
 DECLARE END_DATE DATE DEFAULT DATE_SUB(DATE("{{end_ts}}", "Asia/Tokyo"), INTERVAL {{sum_days - 1}} DAY);
 DECLARE START_DATE DATE DEFAULT DATE_SUB(END_DATE, INTERVAL {{train_days + valid_days + test_days + 2 * sum_days}} DAY);
 
 CREATE OR REPLACE TABLE `{{project_id}}.{{dataset_id}}.{{script_name}}`
-{% endif %}
 AS
 
 WITH BASE AS (

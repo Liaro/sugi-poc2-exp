@@ -8,7 +8,7 @@ from src.utils import add_create_delete_task, render_template, task, setup_logge
 
 predict_tasks = Collection("predict")
 sql_paths = glob("src/predict/sql/*.sql")
-add_create_delete_task(predict_tasks, sql_paths, dataset_id="prediction_dataset")
+add_create_delete_task(predict_tasks, sql_paths)
 
 
 @task

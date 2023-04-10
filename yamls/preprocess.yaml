@@ -17,4 +17,5 @@ sql:
   lag_days: [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]
   # 前回の処方日からの経過日数をClipする最大値
   max_last_prescription_days: 200
+  prescription_stats_days: 180
   update_days: ${update_days}

@@ -5,11 +5,7 @@
 */
 
 
-{% if is_prediction %}
-DECLARE START_DATE DATE DEFAULT DATE_SUB(DATE("{{start_ts}}", "Asia/Tokyo"), INTERVAL {{sum_days - 1 + (preceding_days | max)}} DAY);
-{% else %}
-DECLARE START_DATE DATE DEFAULT DATE_SUB(DATE("{{start_ts}}", "Asia/Tokyo"), INTERVAL {{train_days + valid_days + test_days + 3 * sum_days - 1 + (preceding_days | max)}} DAY);
-{% endif %}
+DECLARE START_DATE DATE DEFAULT DATE_SUB(DATE("{{end_ts}}", "Asia/Tokyo"), INTERVAL {{train_days + valid_days + test_days + 3 * sum_days - 1 + (preceding_days | max)}} DAY);
 DECLARE END_DATE DATE DEFAULT DATE("{{end_ts}}", "Asia/Tokyo");
 
 

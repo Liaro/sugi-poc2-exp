@@ -6,17 +6,7 @@ from src.utils import add_create_delete_task, task
 
 preprocess_tasks = Collection("preprocess")
 sql_paths = glob("src/preprocess/sql/*.sql")
-feature_store_paths = [path for path in sql_paths if "min_max_scaler" in path]
-add_create_delete_task(
-    preprocess_tasks,
-    [path for path in sql_paths if path not in feature_store_paths],
-    dataset_id="train_internal",
-)
-add_create_delete_task(
-    preprocess_tasks,
-    feature_store_paths,
-    dataset_id="featurestore",
-)
+add_create_delete_task(preprocess_tasks, sql_paths)
 
 
 @task

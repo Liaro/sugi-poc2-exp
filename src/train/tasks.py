@@ -8,7 +8,7 @@ from src.utils import add_create_delete_task, render_template, task, setup_logge
 
 train_tasks = Collection("train")
 sql_paths = glob("src/train/sql/*.sql")
-add_create_delete_task(train_tasks, sql_paths, dataset_id="train_dataset")
+add_create_delete_task(train_tasks, sql_paths)
 
 
 @task

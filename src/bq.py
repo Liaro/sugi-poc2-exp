@@ -21,7 +21,7 @@ class BQClient:
     def __init__(self, project, default_dataset=None):
         self.project = project
         self.default_dataset = default_dataset
-        self.client = bigquery.Client(project=project)
+        self.client = bigquery.Client(project=project, location="asia-northeast1")
 
     def _make_job_id(self, prefix=None):
         if prefix is not None:

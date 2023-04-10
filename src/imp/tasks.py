@@ -8,7 +8,7 @@ from src.utils import add_create_delete_task, task
 
 import_tasks = Collection("import")
 sql_paths = glob("src/imp/sql/*.sql")
-add_create_delete_task(import_tasks, sql_paths, dataset_id="import")
+add_create_delete_task(import_tasks, sql_paths)
 
 
 class NewYearHoliday(jpholiday.OriginalHoliday):

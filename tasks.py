@@ -13,7 +13,7 @@ from src.preprocess.tasks import preprocess_tasks
 from src.train.tasks import train_tasks
 from src.predict.tasks import predict_tasks
 from src.vertex import TrainingJob
-from src.gcs import GCSClient
+from src.bq import BQClient
 
 from dags.runner import PipelineRunner
 
@@ -24,6 +24,12 @@ def build_docker(c: Context, push: bool = False):
     c.run(f"docker build  --platform amd64 -t {c.env.image} .")
     if push:
         c.run(f"docker push {c.env.image}")
+
+
+@task
+def create_dataset(c: Context):
+    bq = BQClient(c.env.gcp_project)
+    bq.create_dataset(c.env.dataset_id)
 
 
 @task
@@ -97,21 +103,8 @@ def vertex_jobs(
         instance_type=instance_type,
         timeout=c.vertex.timeout,
         args=cmd,
-        env_args=[
-            {"name": "USER", "value": user},
-        ],
+        env_args=[{"name": "USER", "value": user}],
     )
-
-
-@task
-def upload_dag_folder(c: Context):
-    """dagsファイル以下をComposerのbucketにuploatする。
-
-    Args:
-        c (Context): invokeのContext
-    """
-    gcs = GCSClient(c.env.gcp_project)
-    gcs.upload_directory(c.airflow.bucket, "./dags", c.airflow.dag_folder)
 
 
 @task
@@ -150,7 +143,7 @@ ns = Collection(
     build_docker,
     get_columns,
     vertex_jobs,
-    upload_dag_folder,
+    create_dataset,
     run_pipeline,
     build_pipeline,
     imp=import_tasks,
